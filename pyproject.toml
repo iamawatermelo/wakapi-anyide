@@ -3,7 +3,7 @@ name = "wakapi-anyide"
 version = "0.6.7"
 description = "Time tracking for any IDE with WakaTime-like servers"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [
     {name = "Sarah C"}

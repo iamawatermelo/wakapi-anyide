@@ -12,4 +12,4 @@ notify = "7.0.0"
 
 [dependencies.pyo3]
 version = "0.22.5"
-features = ["abi3-py312", "extension-module"]
+features = ["abi3-py311", "extension-module"]
