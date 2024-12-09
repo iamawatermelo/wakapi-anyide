@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from typing import Dict, Tuple
 
 from aiofiles import open
 from aiofiles.ospath import getsize
@@ -135,11 +136,11 @@ class File:
             )
 
     @classmethod
-    def empty(self, path: str):
+    def empty(cls, path: str):
         """
         Create a File object that represents an empty file.
         """
-        return self(path, 0, 0, "", False, b"", self.max_size)
+        return cls(path, 0, 0, "", False, b"", cls.max_size)
 
 
 def index_to_linecol(file: str, index: int):
@@ -164,6 +165,77 @@ def human_to_bytes(size: str) -> int:
             number = res[0]
             return int(number) * (1024 ** (i + 1))
     raise ValueError("Invalid size format")
+
+def autosave_masking(new_file: File, old_file: File, env: Environment, cache: Dict[str, File]) -> Tuple[File, File]:
+    """
+    When an autosave file matches specific regex patterns in the settings and the name can be found in the cache,
+    it will be passed off as the original file. They are, in fact, the same file,
+    but with a unsaved version.
+
+    Autosave files are tracked like normal files, but if they match the regex
+    AND the name after the regex is filtered matches another file in the cache,
+    it will be passed off as the original file. There is a multi-stage
+    process to handle this, mostly involving the diffing in process_file_change.
+    It compares the new autosave to the old autosave to the original file,
+    and there are various conditions that need to be checked. Some autosave files have dates in them, for example
+
+    The autosave settings in the config is a dictionary, with each entry
+    containing the regex, and the folder where autosaves are. More options will potentially be added later
+    
+    """
+
+    # Get the autosave settings from the environment
+    autosave_settings = env.project.files.autosave_masking
+    count = 0
+    
+    # Iterate over the autosave settings
+    for extension, settings in autosave_settings.items():
+        # Check if the current file matches the regex pattern
+        match = re.match(settings["regex"], new_file.path)
+        if match:
+            count += 1
+            
+            try:
+                # Combine all capture groups into one path, and add the extension as well
+                filename = "".join(match.groups()) + extension
+            except TypeError:
+                # If there are no groups, skip this iteration. Improper regex
+                logger.warning(f"Invalid regex {settings['regex']}")
+                continue
+            
+            # If the folder in the settings is contained in the current file path, remove it, because we are only concerned with relative paths in the original folder
+            if settings["folder"] in filename:
+                filename = filename.replace(settings["folder"], "")
+                       
+            # Check if the filename (after translation) is in the cache, which means the original file is in the cache
+            try:
+                original_file = cache[filename]
+                
+                # Check if the autosave file is in the cache already, this means that the autosave has been modified multiple times and the user potentially hasn't saved yet
+                try:
+                    old_file = cache[new_file.path]
+
+                    # The filename is set to the original filename, but other than that, the autosave file is treated the same as normal files.
+                    new_file.path = filename
+                    old_file.path = filename
+                
+                except KeyError:
+                    # This means that the autosave is not in the cache yet, but the original file is, so diff on that.
+                    # Return the new file (autosave) and the old file (original)
+                    new_file.path = filename
+                    old_file = original_file
+                    
+            # Not a file in the cache. Perhaps we matched a file that's not an autosave, or the original file was deleted
+            except KeyError: 
+                logger.warning(f"Autosave pattern matches an original file that doesn't appear to be an autosave: {filename}. Skipping file")
+                return None, None
+
+    # if there are multiple matches for the same file, print an error message
+    if count > 1:
+        logger.warning(f"Multiple autosave pattern matches for the same file: {new_file.path}. Skipping file")
+        return None, None
+        
+    return new_file, old_file
 
 
 def process_file_change(

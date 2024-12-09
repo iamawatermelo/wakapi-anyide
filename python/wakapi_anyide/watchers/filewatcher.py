@@ -12,6 +12,7 @@ from pathspec import PathSpec
 
 from wakapi_anyide._rust.watch import Watch
 from wakapi_anyide._rust.watch import WatchEventType
+from wakapi_anyide.helpers.filediffer import autosave_masking
 from wakapi_anyide.helpers.filediffer import File
 from wakapi_anyide.helpers.filediffer import human_to_bytes
 from wakapi_anyide.helpers.filediffer import process_file_change
@@ -129,19 +130,29 @@ class FileWatcher(Watcher):
                     logger.debug(
                         f"File changed (was {self.current_file.path}, now {resolved_path})"
                     )
-                    event = process_file_change(
+                    new_file, old_file = autosave_masking(
                         new_file=self.current_file,
                         old_file=self.cache[self.current_file.path],
-                        time=time.time(),
                         env=self.env,
+                        cache=self.cache,
                     )
+                    
+                    event = None
+                    # Skip adding this to queue if the autosave needs to be ignored
+                    if new_file is not None and old_file is not None:
+                        event = process_file_change(
+                            new_file,
+                            old_file,
+                            time=time.time(),
+                            env=self.env,
+                        )
 
                     if event is not None:
                         await queue.put(event)
 
-                    self.cache[resolved_path] = new_file
+                    self.cache[resolved_path] = self.current_file
 
-                self.current_file = new_file
+                if new_file is not None: self.current_file = new_file
 
     async def setup(self, tg: TaskGroup, emit_event: Queue[Event]):
         self.task = tg.create_task(self._task(emit_event))
@@ -151,15 +162,24 @@ class FileWatcher(Watcher):
 
     async def resolve_events(self) -> AsyncGenerator[Event, None]:
         if self.current_file is not None:
-            event = process_file_change(
+            new_file, old_file = autosave_masking(
                 new_file=self.current_file,
                 old_file=self.cache[self.current_file.path],
-                time=time.time(),
                 env=self.env,
+                cache=self.cache,
             )
+            # Skip adding this to queue if the autosave needs to be ignored
+            if new_file is not None and old_file is not None:
+            
+                event = process_file_change(
+                    new_file,
+                    old_file,
+                    time=time.time(),
+                    env=self.env,
+                )
 
-            if event is not None:
-                yield event
+                if event is not None:
+                    yield event
 
             self.cache[self.current_file.path] = self.current_file
             self.current_file = None

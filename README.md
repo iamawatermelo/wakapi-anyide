@@ -48,6 +48,9 @@ These instructions are best run in an existing project.
   # language_mapping = {".kicad_sch" = "Kicad Schematic"}  # custom language mapping
   # editor_mapping = {".kicad_sch" = "Kicad Schematic Editor"} # custom editor mapping
   large_file_threshold = "64KiB" # files larger than this will not do precise line diffing, it will only count total lines. 
+  # Make sure to capture all relavant groups that would be part of the original file. Don't include the extension in the captures though, the extension is already determined.
+  # Also make sure to double escape, TOML uses backslashes for line breaks already
+  autosave_masking = {".kicad_sch" = {"regex" = "(^.*)(?:\\.kicad_sch-bak)", folder = ""}}
 
   [project]
   name = "PROJECT NAME"  # your project name

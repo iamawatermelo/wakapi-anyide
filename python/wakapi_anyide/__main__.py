@@ -33,6 +33,9 @@ language_mapping = {language_mapping} # custom language mapping
 editor_mapping = {editor_mapping} # custom editor mapping
 large_file_threshold = "64KiB" # files larger than this will not do precise line diffing, it will only count total lines. 
 # It is recommended to set the threshold to 0 for thousands of files, because they are all stored in RAM
+# Make sure to capture all relavant groups that would be part of the original file. Don't include the extension in the captures though, the extension is already determined.
+# Also make sure to double escape, TOML uses backslashes for line breaks already
+autosave_masking = {".kicad_sch" = {"regex" = "(^.*)(?:\\.kicad_sch-bak)", folder = ""}}
 
 [project]
 name = "{name}"  # your project name

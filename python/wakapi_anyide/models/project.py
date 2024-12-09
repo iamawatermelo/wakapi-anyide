@@ -20,6 +20,7 @@ class ProjectFiles(BaseModel):
     language_mapping: dict = {}
     editor_mapping: dict = {}
     large_file_threshold: str = "64KiB"
+    autosave_masking: dict = {"fileext": {"regex": "", "folder": ""}}
 
 
 class ProjectDescription(BaseModel):
