@@ -34,10 +34,31 @@
         "type": "github"
       }
     },
+    "pyproject-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1734658408,
+        "narHash": "sha256-HdHkeJ506zKDOrCvsMoZllrOs1sol6bYbv1DifDtas0=",
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
+        "rev": "139a84af40ed51c87f27708fcbe196bd6f189efd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
+        "pyproject-nix": "pyproject-nix",
         "rust-overlay": "rust-overlay"
       }
     },
