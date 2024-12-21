@@ -31,7 +31,7 @@ These instructions are best run in an existing project.
 
 - Install `wakapi-anyide` with your favourite Python package manager (try `pipx install wakapi-anyide[color]` to install with colour support!)
 
-- Run `wakapi-anyide setup` and follow the instructions.  
+- Run `wakapi-anyide setup` and follow the instructions. **If you aren't sure, just hit enter for sensible defaults.**  
   The **included paths** are the paths that wakapi-anyide will watch for changes.  
   The **excluded paths** are the paths that wakapi-anyide will ignore.
   You should put things like generated/compiled code or packages there (ie `*.o`, `/node_modules`).
@@ -58,7 +58,7 @@ These instructions are best run in an existing project.
 
 - Run `wakapi-anyide test` in the same directory you have `wak.toml` in.
   Ensure that wakapi-anyide is not tracking any generated files by reading through the paths it has cached.
-  If there are no generated files in the cached paths, you're good to go.
+  If there are no generated files in the cached paths, you're good to go. If there are, edit the include and exclude properties (they use the same format as a gitignore).
 
 - Run `wakapi-anyide track` to actually track your progress.
   You must run this every time.
