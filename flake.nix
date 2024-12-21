@@ -5,6 +5,9 @@
 
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+
+    pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
+    pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
@@ -12,14 +15,41 @@
     nixpkgs,
     flake-utils,
     rust-overlay,
+    pyproject-nix,
   } @ inputs:
     flake-utils.lib.eachDefaultSystem
     (
       system: let
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
+        lib = pkgs.lib;
 
-        python = pkgs.python3;
+        project = pyproject-nix.lib.project.loadPyproject {projectRoot = ./.;};
+
+        python = pkgs.python3.override {
+          self = python;
+          packageOverrides = pyfinal: pyprev: {
+            pydantic-settings = pyprev.pydantic-settings.overridePythonAttrs (old: rec {
+              version = "2.6.1";
+              src = pkgs.fetchPypi {
+                pname = "pydantic_settings";
+                inherit version;
+                hash = "sha256-4PklRtipkjy4lBaJq/hdZgGowZoj6Xo0spZKLj+BPKA=";
+              };
+            });
+
+            typer-slim = pyprev.typer.overridePythonAttrs (old: rec {
+              pname = "typer-slim";
+              version = "0.12.5";
+
+              src = pkgs.fetchPypi {
+                pname = "typer_slim";
+                inherit version;
+                hash = "sha256-yOP8+TzH3VhANt+HVdLiNj+F+KTdAox5Ee7T8Azw67E=";
+              };
+            });
+          };
+        };
         rust = pkgs.rust-bin.stable.latest.default;
         rustPlatform = pkgs.makeRustPlatform {
           rustc = rust;
@@ -36,24 +66,29 @@
           '';
         };
 
-        packages.default = python.pkgs.buildPythonApplication rec {
-          name = "wakapi-anyide-${version}";
-          version = "0.6.8";
-          pyproject = true;
+        packages.default = let
+          projectConfig = project.renderers.buildPythonPackage {inherit python;};
+        in
+          python.pkgs.buildPythonApplication rec {
+            name = "wakapi-anyide-${version}";
+            version = "0.6.8";
+            pyproject = true;
 
-          cargoDeps = rustPlatform.fetchCargoTarball {
-            inherit src;
-            hash = "sha256-qSU1QkYeGrVqWo+H+nB0DziJTjagaPczQhONV6ZFX14=";
+            cargoDeps = rustPlatform.fetchCargoTarball {
+              inherit src;
+              hash = "sha256-qSU1QkYeGrVqWo+H+nB0DziJTjagaPczQhONV6ZFX14=";
+            };
+
+            nativeBuildInputs = with pkgs; [
+              maturin
+              rustPlatform.cargoSetupHook
+              rustPlatform.maturinBuildHook
+            ];
+
+            inherit (projectConfig) dependencies;
+
+            src = ./.;
           };
-
-          nativeBuildInputs = with pkgs; [
-            maturin
-            rustPlatform.cargoSetupHook
-            rustPlatform.maturinBuildHook
-          ];
-
-          src = ./.;
-        };
       }
     );
 }
