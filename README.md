@@ -19,7 +19,7 @@ You should try use an [editor extension](https://wakatime.com/plugins) over waka
 If you don't need precise coding metrics, use the [WakaTime app](https://wakatime.com/linux) instead. The WakaTime app does not work with High Seas.
 
 ## Quickstart guide for most IDEs
-These instructions are best run in an existing project.
+These instructions are best run in an existing project. **Make sure to run it in your project directory.**
 
 - Create a `.wakatime.cfg` file if you don't already have one.
   If you're doing High Seas, you can just run the setup script (and ignore any errors about VS Code not being installed if there are any).
