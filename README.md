@@ -22,7 +22,7 @@ If you don't need precise coding metrics, use the [WakaTime app](https://wakatim
 These instructions are best run in an existing project.
 
 - Create a `.wakatime.cfg` file if you don't already have one.
-  If you're doing High Seas, this is explained in the Signpost (click "View instructions for all platforms" and scroll down).
+  If you're doing High Seas, you can just run the setup script (and ignore any errors about VS Code not being installed if there are any).
 
 - **Set your IDE to autosave as quickly as possible.**
   This is how wakapi-anyide is able to track your coding time. Ideally, something like a second, so it saves as you type.
