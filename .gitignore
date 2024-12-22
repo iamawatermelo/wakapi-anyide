@@ -17,3 +17,7 @@ __pycache__
 # Ruff
 
 .ruff_cache
+
+# Direnv
+.direnv
+.nix-venv
