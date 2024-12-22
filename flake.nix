@@ -105,7 +105,6 @@
         packages.default = let
           projectConfig = pyproject.renderers.buildPythonPackage {
             inherit python;
-            project = pyproject;
           };
         in
           python.pkgs.buildPythonApplication (projectConfig
