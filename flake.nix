@@ -88,20 +88,33 @@
           };
         };
       in {
+        # Setup a shell for direnv and `nix shell`
         devShells.default = let
           projectPackages = pyproject.renderers.withPackages {inherit python;};
+
           pythonEnv = python.withPackages projectPackages;
+
+          libPath = lib.makeLibraryPath (with pkgs; [
+            stdenv.cc.cc
+          ]);
         in
           pkgs.mkShell {
-            buildInputs = with pkgs; [alejandra maturin rust pythonEnv];
+            nativeBuildInputs = with pkgs; [alejandra maturin rust pythonEnv];
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib.outPath}/lib:${pkgs.pythonManylinuxPackages.manylinux2014Package}/lib:$LD_LIBRARY_PATH";
-              test -d .nix-venv || ${python.interpreter} -m venv .nix-venv
-              source .nix-venv/bin/activate
+              export "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${libPath}"
+              VENV=.nix-venv
+
+              if test ! -d $VENV; then
+                python3.12 -m venv $VENV
+              fi
+
+              source ./$VENV/bin/activate
+              export PYTHONPATH=`pwd`/$VENV/${python.sitePackages}/:$PYTHONPATH
             '';
           };
 
+        # Package the wakapi-anyide to be used as a package and for `nix run`
         packages.default = let
           projectConfig = pyproject.renderers.buildPythonPackage {
             inherit python;
