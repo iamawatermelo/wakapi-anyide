@@ -53,7 +53,7 @@
 
           project' = lib.setAttr project "dependencies" filteredDeps;
         in
-          updateProjectMethods (lib.traceValSeq project');
+          updateProjectMethods project';
 
         pyproject = removeMaturinDeps (pyproject-nix.lib.project.loadPyproject {projectRoot = ./.;});
 
@@ -93,7 +93,7 @@
           pythonEnv = python.withPackages projectPackages;
         in
           pkgs.mkShell {
-            buildInputs = with pkgs; [alejandra maturin rust python];
+            buildInputs = with pkgs; [alejandra maturin rust pythonEnv];
 
             shellHook = ''
               export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib.outPath}/lib:${pkgs.pythonManylinuxPackages.manylinux2014Package}/lib:$LD_LIBRARY_PATH";
@@ -107,29 +107,20 @@
             inherit python;
             project = pyproject;
           };
-          build-system2 = projectConfig.build-system;
         in
-          python.pkgs.buildPythonApplication rec {
-            name = "wakapi-anyide-${version}";
-            version = "0.6.8";
-            pyproject = true;
+          python.pkgs.buildPythonApplication (projectConfig
+            // {
+              cargoDeps = rustPlatform.fetchCargoTarball {
+                src = projectConfig.src;
+                hash = "sha256-qSU1QkYeGrVqWo+H+nB0DziJTjagaPczQhONV6ZFX14=";
+              };
 
-            cargoDeps = rustPlatform.fetchCargoTarball {
-              inherit src;
-              hash = "sha256-qSU1QkYeGrVqWo+H+nB0DziJTjagaPczQhONV6ZFX14=";
-            };
-
-            nativeBuildInputs = with pkgs; [
-              maturin
-              rustPlatform.cargoSetupHook
-              rustPlatform.maturinBuildHook
-            ];
-
-            inherit (projectConfig) dependencies;
-            build-system = lib.traceValSeqN 2 build-system2;
-
-            src = ./.;
-          };
+              nativeBuildInputs = with pkgs; [
+                maturin
+                rustPlatform.cargoSetupHook
+                rustPlatform.maturinBuildHook
+              ];
+            });
       }
     );
 }
