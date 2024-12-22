@@ -24,7 +24,44 @@
         pkgs = import nixpkgs {inherit system overlays;};
         lib = pkgs.lib;
 
-        project = pyproject-nix.lib.project.loadPyproject {projectRoot = ./.;};
+        # If we don't do this, the renderers and validators will use the old project attrset
+        updateProjectMethods = let
+          inherit (pyproject-nix.lib) renderers validators;
+          curryProject = attrs: project:
+            lib.mapAttrs (
+              _: func: args:
+                func (args // {inherit project;})
+            )
+            attrs;
+        in
+          project:
+            (lib.makeExtensible (final: project)).extend (
+              final: prev: {
+                # Set renderers/validators to use new project deps
+                renderers = curryProject renderers final;
+                validators = curryProject validators final;
+              }
+            );
+
+        # We need to remove the "maturin" dependency because it is installed via nix, and not in the python packages
+        removeMaturinDeps = project: let
+          filteredDeps = lib.mapAttrs (name: value:
+            if lib.elem name ["dependencies" "build-systems"]
+            then lib.filter (dep: dep.name != "maturin") value
+            else value)
+          project.dependencies;
+
+          project' = lib.setAttr project "dependencies" filteredDeps;
+        in
+          updateProjectMethods (lib.traceValSeq project');
+
+        pyproject = removeMaturinDeps (pyproject-nix.lib.project.loadPyproject {projectRoot = ./.;});
+
+        rust = pkgs.rust-bin.stable.latest.default;
+        rustPlatform = pkgs.makeRustPlatform {
+          rustc = rust;
+          cargo = rust;
+        };
 
         python = pkgs.python3.override {
           self = python;
@@ -50,24 +87,27 @@
             });
           };
         };
-        rust = pkgs.rust-bin.stable.latest.default;
-        rustPlatform = pkgs.makeRustPlatform {
-          rustc = rust;
-          cargo = rust;
-        };
       in {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [alejandra maturin rust python];
+        devShells.default = let
+          projectPackages = pyproject.renderers.withPackages {inherit python;};
+          pythonEnv = python.withPackages projectPackages;
+        in
+          pkgs.mkShell {
+            buildInputs = with pkgs; [alejandra maturin rust python];
 
-          shellHook = ''
-            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib.outPath}/lib:${pkgs.pythonManylinuxPackages.manylinux2014Package}/lib:$LD_LIBRARY_PATH";
-            test -d .nix-venv || ${python.interpreter} -m venv .nix-venv
-            source .nix-venv/bin/activate
-          '';
-        };
+            shellHook = ''
+              export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib.outPath}/lib:${pkgs.pythonManylinuxPackages.manylinux2014Package}/lib:$LD_LIBRARY_PATH";
+              test -d .nix-venv || ${python.interpreter} -m venv .nix-venv
+              source .nix-venv/bin/activate
+            '';
+          };
 
         packages.default = let
-          projectConfig = project.renderers.buildPythonPackage {inherit python;};
+          projectConfig = pyproject.renderers.buildPythonPackage {
+            inherit python;
+            project = pyproject;
+          };
+          build-system2 = projectConfig.build-system;
         in
           python.pkgs.buildPythonApplication rec {
             name = "wakapi-anyide-${version}";
@@ -86,6 +126,7 @@
             ];
 
             inherit (projectConfig) dependencies;
+            build-system = lib.traceValSeqN 2 build-system2;
 
             src = ./.;
           };
